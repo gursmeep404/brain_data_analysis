@@ -2,18 +2,49 @@ import streamlit as st
 import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
+import re
 
 st.set_page_config(layout="wide")
-st.title("🧠 Hospital CT Scan Patient Dashboard")
+st.title("Brain CT Scan Dashboard")
 
-# Load the sample data
-df = pd.read_csv("sample_ct_data.csv")
 
-# Gender filter
-gender = st.sidebar.selectbox("Filter by Gender", options=["All", "Male", "Female"])
-if gender != "All":
-    df = df[df["Gender"] == gender]
 
+# Load & Clean Data
+df = pd.read_excel("data/brain_dataset_final.xlsx", engine='openpyxl')
+df.columns = df.columns.str.strip()  
+# Clean age column
+def clean_age(val):
+    if pd.isnull(val):
+        return None
+    if isinstance(val, (int, float)):
+        return float(val)
+
+    val = str(val).strip().lower()
+
+    if 'w' in val:
+        try:
+            return float(val.replace('w', '').replace('weeks', '')) / 52
+        except:
+            return None
+    if 'm' in val and 'mo' not in val:
+        try:
+            return float(val.replace('m', '').replace('months', '')) / 12
+        except:
+            return None
+    if 'y' in val:
+        try:
+            return float(val.replace('yrs', '').replace('years', '').replace('y', '').strip())
+        except:
+            return None
+    try:
+        return float(val)
+    except:
+        return None
+
+df["Age_clean"] = df["Age"].apply(clean_age)
+
+
+# 1. Demographics
 st.header("1. Demographics")
 
 col1, col2 = st.columns(2)
@@ -21,13 +52,29 @@ col1, col2 = st.columns(2)
 with col1:
     st.subheader("Age Distribution")
     fig1, ax1 = plt.subplots()
-    sns.histplot(df["Age"], bins=15, kde=True, ax=ax1)
+    sns.histplot(df["Age_clean"].dropna(), bins=15, kde=True, ax=ax1, color="#BE4B4B")
     st.pyplot(fig1)
 
 with col2:
     st.subheader("Gender Distribution")
-    st.bar_chart(df["Gender"].value_counts())
 
+    gender_counts = df["Gender"].value_counts()
+
+    fig2, ax2 = plt.subplots(figsize=(3.5, 2.5))  
+    colors = ["#F0B55D","#FA99D5", "#99B3FA"] 
+    bars = ax2.bar(gender_counts.index, gender_counts.values, color=colors)
+
+    ax2.set_ylabel("Count", fontsize=9)
+    ax2.set_xlabel("")
+    ax2.set_title("Gender Distribution", fontsize=10, color="#2F4F4F")
+    ax2.tick_params(axis='both', labelsize=8)
+
+    fig2.tight_layout()
+    st.pyplot(fig2)
+
+
+
+# 2. Scan Acquisition
 st.markdown("---")
 st.header("2. Scan Acquisition")
 
@@ -35,52 +82,165 @@ col3, col4 = st.columns(2)
 
 with col3:
     st.subheader("Slice Thickness Count")
-    slice_counts = df[[
+    slice_columns = [
         'Slice Thickness (in mm) - 1mm',
         'Slice Thickness (in mm) - 5mm',
         'Slice Thickness (in mm) - others'
-    ]].notnull().sum()
-    st.bar_chart(slice_counts)
+    ]
+    valid_slices = [col for col in slice_columns if col in df.columns]
+    if valid_slices:
+        slice_counts = df[valid_slices].notnull().sum()
+        colors = sns.color_palette("coolwarm", len(slice_counts)).as_hex()
+        fig, ax = plt.subplots()
+        slice_counts.plot(kind="bar", color=colors, ax=ax)
+        ax.set_title("Slice Thickness Count")
+        ax.tick_params(axis='x', labelrotation=0, labelsize=6)
+        st.pyplot(fig)
+
+    else:
+        st.warning("Slice thickness columns not found.")
 
 with col4:
     st.subheader("Data Source Distribution")
-    source_counts = {
-        "Oviyam": df["Data Obtained from - Oviyam"].sum(),
-        "Centricity": df["Data Obtained from - Centricity"].sum()
-    }
-    st.bar_chart(pd.Series(source_counts))
+    source_columns = [
+        "Data Obtained from - Oviyam",
+        "Data Obtained from - Centricity"
+    ]
 
+    source_counts = {}
+    for col in source_columns:
+        if col in df.columns:
+            numeric_col = pd.to_numeric(df[col], errors='coerce').fillna(0).astype(int)
+            source_counts[col.split(" - ")[-1]] = numeric_col.sum()
+
+    if source_counts:
+        # Create bar chart with custom colors
+        source_series = pd.Series(source_counts)
+        fig, ax = plt.subplots(figsize=(3.5, 2.5))
+        bar_colors = [ "#AF4571", "#6A5ACD"]
+        ax.bar(source_series.index, source_series.values, color=bar_colors)
+
+        ax.set_title("Data Source Distribution", fontsize=10, color="#2F4F4F")
+        ax.set_ylabel("Count", fontsize=9)
+        ax.set_xlabel("")
+        ax.tick_params(axis='x', labelrotation=10, labelsize=8)
+        ax.tick_params(axis='y', labelsize=8)
+        fig.tight_layout()
+        st.pyplot(fig)
+    else:
+        st.warning("Data source columns not found.")
+
+
+
+# 3. Pathology Summary
 st.markdown("---")
-st.header("3. Pathology Summary")
+col_path = st.columns([0.2, 0.6, 0.2])[1]  
 
-pathology_cols = [
-    "Pathology- Trauma/ Head Injury",
-    "Pathology- stroke"
-]
-st.bar_chart(df[pathology_cols].sum())
+with col_path:
+    st.markdown("<h2 style='color:#4B8BBE;'>3. Pathology Summary</h2>", unsafe_allow_html=True)
 
+    pathology_cols = [
+        "Pathology- Trauma/ Head Injury",
+        "Pathology- stroke",
+        "Pathology - Hydrocephalus",
+        "Pathology - CVJ Spine",
+        "Pathology - Others"
+    ]
+
+    valid_pathologies = [col for col in pathology_cols if col in df.columns]
+
+    if valid_pathologies:
+        counts = df[valid_pathologies].sum()
+        fig, ax = plt.subplots(figsize=(3.5, 2.5))  
+
+        bars = ax.bar(counts.index, counts.values, 
+                      color=sns.color_palette("Set2", len(counts)).as_hex(), width=0.6)
+
+        ax.set_title("Pathology Summary", fontsize=10, color="#2F4F4F")
+        ax.set_ylabel("Count", fontsize=8)
+        ax.set_xlabel("")
+        ax.tick_params(axis='x', labelrotation=0, labelsize=3)
+        ax.tick_params(axis='y', labelsize=4)
+
+        fig.tight_layout()
+        st.pyplot(fig)
+    else:
+        st.warning("Pathology columns not found.")
+
+
+# GCS + Injury Details side by side
 st.markdown("---")
-st.header("4. GCS Score Comparison")
-
-fig2, ax2 = plt.subplots()
-sns.boxplot(data=df[["Admission GCS - Score", "Discharge GCS - Score"]], ax=ax2)
-st.pyplot(fig2)
-
-st.markdown("---")
-st.header("5. Injury Details")
+st.header("4 & 5. GCS vs Injury Details")
 
 col5, col6 = st.columns(2)
 
 with col5:
-    st.subheader("Side of Injury")
-    st.bar_chart(df["Side Present in (L/R)"].value_counts())
+    st.subheader("GCS Score Comparison")
+
+    def extract_score(value):
+        if isinstance(value, str):
+            match = re.search(r'=(\d+)', value)
+            if match:
+                return int(match.group(1))
+        try:
+            return float(value)  
+        except:
+            return None
+
+    admission_col = "Admission GCS  - Score"
+    discharge_col = "Discharge GCS - Score"
+
+    if all(col in df.columns for col in [admission_col, discharge_col]):
+        df["Admission GCS"] = df[admission_col].apply(extract_score)
+        df["Discharge GCS"] = df[discharge_col].apply(extract_score)
+
+        gcs_df = df[["Admission GCS", "Discharge GCS"]].dropna()
+        gcs_melted = gcs_df.melt(var_name="Stage", value_name="GCS Score")
+
+        fig, ax = plt.subplots(figsize=(4, 3))
+        sns.stripplot(x="Stage", y="GCS Score", data=gcs_melted, jitter=True, size=6, ax=ax, palette="Set2")
+        ax.set_title("GCS: Admission vs Discharge")
+        st.pyplot(fig)
+    else:
+        st.warning("Required GCS score columns are missing.")
 
 with col6:
-    st.subheader("Injury Volume Distribution")
-    fig3, ax3 = plt.subplots()
-    sns.histplot(df["Volume in mm"], bins=20, ax=ax3)
-    st.pyplot(fig3)
+    st.subheader("Side of Injury")
 
+    column_name = "Side Present in (L/R)"
+    if column_name in df.columns:
+        side_counts = df[column_name].value_counts()
+        threshold = 5  # Categories with less than this count will be grouped
+
+        # Group low-frequency categories
+        side_counts_grouped = side_counts.copy()
+        side_counts_grouped["Others"] = side_counts[side_counts < threshold].sum()
+        side_counts_grouped = side_counts_grouped[side_counts_grouped >= threshold]
+
+        fig, ax = plt.subplots(figsize=(4, 3))
+        side_counts_grouped.plot(kind="bar", color="#64E4ED", ax=ax)
+
+        ax.set_title("Side of Injury (Grouped)", fontsize=10, color="#2F4F4F")
+        ax.set_ylabel("Count", fontsize=8)
+        ax.tick_params(axis='x', labelrotation=30, labelsize=7)
+        ax.tick_params(axis='y', labelsize=7)
+
+        fig.tight_layout()
+        st.pyplot(fig)
+    else:
+        st.warning(f"Column '{column_name}' not found.")
+
+
+
+
+# 6. Raw Data Table
 st.markdown("---")
-st.subheader("📋 Raw Data (filtered)")
+st.subheader("Raw Data (filtered)")
 st.dataframe(df)
+
+
+# 7. Debug: Show Problematic Ages
+st.markdown("---")
+st.caption("Non-numeric Age entries (skipped in plot):")
+bad_ages = df[df["Age_clean"].isnull() & df["Age"].notnull()]
+st.write(bad_ages["Age"].unique())
