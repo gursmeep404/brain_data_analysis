@@ -89,23 +89,36 @@ col3, col4 = st.columns(2)
 
 with col3:
     st.subheader("Slice Thickness Count")
-    slice_columns = [
-        'Slice Thickness (in mm) - 1mm',
-        'Slice Thickness (in mm) - 5mm',
-        'Slice Thickness (in mm) - others'
-    ]
-    valid_slices = [col for col in slice_columns if col in df.columns]
-    if valid_slices:
-        slice_counts = df[valid_slices].notnull().sum()
+
+    slice_cols = {
+        '1mm': 'Slice Thickness (in mm) - 1mm',
+        '5mm': 'Slice Thickness (in mm) - 5mm',
+        'others': 'Slice Thickness (in mm) - others'
+    }
+
+    if all(col in df.columns for col in slice_cols.values()):
+        count_1mm = (df[slice_cols['1mm']] == 1).sum()
+        count_5mm = (df[slice_cols['5mm']] == 1).sum()
+        count_others = df[slice_cols['others']].apply(lambda x: pd.notnull(x) and x != 0).sum()
+
+        slice_counts = pd.Series({
+            '1mm': count_1mm,
+            '5mm': count_5mm,
+            'others': count_others
+        })
+
         colors = sns.color_palette("coolwarm", len(slice_counts)).as_hex()
         fig, ax = plt.subplots()
         slice_counts.plot(kind="bar", color=colors, ax=ax)
-        ax.set_title("Slice Thickness Count")
-        ax.tick_params(axis='x', labelrotation=0, labelsize=6)
-        st.pyplot(fig)
 
+        ax.set_title("Slice Thickness Count")
+        ax.set_ylabel("Count")
+        ax.tick_params(axis='x', labelrotation=0, labelsize=8)
+
+        st.pyplot(fig)
     else:
-        st.warning("Slice thickness columns not found.")
+        st.warning("Some slice thickness columns are missing.")
+
 
 with col4:
     st.subheader("Data Source Distribution")
