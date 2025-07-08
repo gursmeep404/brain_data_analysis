@@ -18,6 +18,7 @@ st.title("Brain CT Scan Dashboard")
 
 
 # Clean Data
+# df = pd.read_excel("data/brain_dataset_final.xlsx", engine='openpyxl')
 df.columns = df.columns.str.strip()  
 # Clean age column
 def clean_age(val):
@@ -316,7 +317,7 @@ with col_b2:
 
         fig, ax = plt.subplots(figsize=(4, 3))
         sns.barplot(y=location_counts.index, x=location_counts.values, palette="viridis", ax=ax)
-        ax.set_title("Top Brain Locations (Excluding 'none')")
+        ax.set_title("Top Brain Locations")
         ax.set_xlabel("Count")
         ax.set_ylabel("")
         st.pyplot(fig)
