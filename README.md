@@ -2,7 +2,8 @@
 
 This Streamlit-based web app provides an interactive and insightful dashboard for analyzing and visualizing brain CT scan data. It supports machine learning engineers and  researchers by offering quick visual summaries of demographics, scan acquisition parameters, pathology insights, and injury details. It simplifies the data exploration process before modeling
 
----
+ **Live App**: [Click here to open the dashboard](https://braindatadashboard-gursmeep.streamlit.app/)
+
 
 ## Features
 
@@ -47,14 +48,6 @@ This Streamlit-based web app provides an interactive and insightful dashboard fo
 - Assists in subtype modeling and clinical stratification
 
 
----
-
-## Deployment
-
-This app is deployed on [Streamlit Cloud](https://braindatadashboard-gursmeep.streamlit.app/).  
-The dataset is securely stored and loaded via a private `DATA_URL` using Streamlit's secret manager to prevent public access to sensitive medical data.
-
----
 
 ## Security Note
 
