@@ -210,7 +210,7 @@ with col6:
     column_name = "Side Present in (L/R)"
     if column_name in df.columns:
         side_counts = df[column_name].value_counts()
-        threshold = 5  # Categories with less than this count will be grouped
+        threshold = 5  
 
         # Group low-frequency categories
         side_counts_grouped = side_counts.copy()
@@ -231,6 +231,92 @@ with col6:
         st.warning(f"Column '{column_name}' not found.")
 
 
+
+# 6. Additional Brain CT Insights
+st.markdown("---")
+st.header("6. Brain CT Insights from Radiologist's notes")
+
+col_a1, col_a2 = st.columns(2)
+
+# 6.1 Abnormal/Normal Classification
+with col_a1:
+    st.subheader("Abnormal vs Normal")
+    if "Abnormal/Normal" in df.columns:
+        status_counts = df["Abnormal/Normal"].value_counts()
+        fig, ax = plt.subplots(figsize=(3.5, 2.5))
+        colors = ["#FF9999", "#99FF99", "#99D6FF"]
+        ax.pie(status_counts, labels=status_counts.index, autopct="%1.1f%%", colors=colors, startangle=140)
+        ax.axis("equal")
+        st.pyplot(fig)
+    else:
+        st.warning("Column 'Abnormal/Normal' not found.")
+
+# 6.2 Midline Shift
+with col_a2:
+    st.subheader("Midline Shift Status")
+    if "Midline Shift" in df.columns:
+        shift_counts = df["Midline Shift"].astype(str).str.strip().str.lower().value_counts()
+        fig, ax = plt.subplots(figsize=(3.5, 2.5))
+        shift_counts.plot(kind="bar", color=[ "#A78CF1","#F785C3","#E3E566" ], ax=ax)
+        ax.set_ylabel("Count")
+        ax.set_title("Midline Shift Presence")
+        ax.tick_params(axis='x', labelrotation=0, labelsize=8)
+        ax.tick_params(axis='y', labelsize=8)
+        st.pyplot(fig)
+    else:
+        st.warning("Column 'Midline Shift' not found.")
+
+
+st.markdown("---")
+st.header("7. Pathologies & Anatomical Location")
+
+col_b1, col_b2 = st.columns(2)
+
+# 7.1 Pathologies Extracted
+with col_b1:
+    st.subheader("Pathologies Extracted")
+    if "Pathologies Extracted" in df.columns:
+        extracted = df["Pathologies Extracted"].dropna()
+        extracted_counts = extracted.value_counts().head(10)
+        fig, ax = plt.subplots(figsize=(4, 3))
+        sns.barplot(y=extracted_counts.index, x=extracted_counts.values, palette="magma", ax=ax)
+        ax.set_title("Top Pathologies Extracted")
+        ax.set_xlabel("Count")
+        ax.set_ylabel("")
+        st.pyplot(fig)
+    else:
+        st.warning("Column 'Pathologies Extracted' not found.")
+
+# Location & Brain Organ Plot
+with col_b2:
+    st.subheader("Location & Brain Organ (Filtered)")
+    if "Location & Brain Organ" in df.columns:
+        location_cleaned = df["Location & Brain Organ"].astype(str).str.strip().str.lower()
+        location_counts = location_cleaned[location_cleaned != "none"].value_counts().head(10)
+
+        fig, ax = plt.subplots(figsize=(4, 3))
+        sns.barplot(y=location_counts.index, x=location_counts.values, palette="viridis", ax=ax)
+        ax.set_title("Top Brain Locations (Excluding 'none')")
+        ax.set_xlabel("Count")
+        ax.set_ylabel("")
+        st.pyplot(fig)
+    else:
+        st.warning("Column 'Location & Brain Organ' not found.")
+
+
+st.markdown("---")
+st.header("8. Bleed Subcategory")
+
+if "Bleed Subcategory" in df.columns:
+    bleed_counts = df["Bleed Subcategory"].value_counts().head(10)
+    fig, ax = plt.subplots(figsize=(5, 3))
+    sns.barplot(x=bleed_counts.values, y=bleed_counts.index, palette="coolwarm", ax=ax)
+    ax.set_title("Common Bleed Subcategories")
+    ax.set_xlabel("Count")
+    ax.set_ylabel("")
+    st.pyplot(fig)
+else:
+    st.warning("Column 'Bleed Subcategory' not found.")
 
 
 # 6. Raw Data Table
