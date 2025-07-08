@@ -3,14 +3,21 @@ import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
 import re
+import requests
+from io import BytesIO
+
+# Load data
+url = st.secrets["DATA_URL"]
+response = requests.get(url)
+df = pd.read_excel(BytesIO(response.content), engine="openpyxl")
+
 
 st.set_page_config(layout="wide")
 st.title("Brain CT Scan Dashboard")
 
 
 
-# Load & Clean Data
-df = pd.read_excel("data/brain_dataset_final.xlsx", engine='openpyxl')
+# Clean Data
 df.columns = df.columns.str.strip()  
 # Clean age column
 def clean_age(val):
