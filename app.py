@@ -327,9 +327,9 @@ else:
 
 
 # 6. Raw Data Table
-st.markdown("---")
-st.subheader("Raw Data (filtered)")
-st.dataframe(df)
+# st.markdown("---")
+# st.subheader("Raw Data (filtered)")
+# st.dataframe(df)
 
 
 # 7. Debug: Show Problematic Ages
